@@ -7,6 +7,8 @@ mod map;
 pub use map::*;
 mod player;
 pub use player::*;
+pub mod rect;
+use rect::Rect;
 
 pub struct State {
     ecs: World,
@@ -42,15 +44,20 @@ fn main() -> BError {
         .with_title("Roguelike")
         .build()?;
 
-    let mut gs: State = State { ecs: World::new() };
+    let mut gs = State { ecs: World::new() };
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
+
+    let (rooms, map) = new_map_rooms_and_corridors();
+    gs.ecs.insert(map);
+    let (player_x, player_y) = rooms[0].center();
+
     gs.ecs
         .create_entity()
         .with(Position {
-            x: WIDTH / 2,
-            y: HEIGHT / 2,
+            x: player_x,
+            y: player_y,
         })
         .with(Renderable {
             glyph: to_cp437('@'),
@@ -59,7 +66,6 @@ fn main() -> BError {
         })
         .with(Player {})
         .build();
-    gs.ecs.insert(new_map());
 
     main_loop(context, gs)
 }

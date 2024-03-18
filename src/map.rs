@@ -1,9 +1,12 @@
+use bracket_lib::pathfinding::{Algorithm2D, BaseMap};
 use bracket_lib::random::RandomNumberGenerator;
-use bracket_lib::terminal::{to_cp437, BTerm, RGB};
+use bracket_lib::terminal::{to_cp437, BTerm, Point, RGB};
 use specs::prelude::*;
 use std::cmp::{max, min};
 
-use super::Rect;
+use crate::Player;
+
+use super::{Rect, Viewshed};
 
 pub const MAP_WIDTH: i32 = 80;
 pub const MAP_HEIGHT: i32 = 50;
@@ -111,38 +114,58 @@ impl Map {
     }
 }
 
+impl Algorithm2D for Map {
+    fn dimensions(&self) -> Point {
+        Point::new(self.width, self.height)
+    }
+}
+
+impl BaseMap for Map {
+    fn is_opaque(&self, idx: usize) -> bool {
+        self.tiles[idx] == TileType::Wall
+    }
+}
+
 pub fn draw_map(ecs: &World, ctx: &mut BTerm) {
+    let mut viewsheds = ecs.write_storage::<Viewshed>();
+    let mut players = ecs.write_storage::<Player>();
     let map = ecs.fetch::<Map>();
 
-    let mut x = 0;
-    let mut y = 0;
+    for (_player, viewshed) in (&mut players, &mut viewsheds).join() {
+        let mut x = 0;
+        let mut y = 0;
 
-    for tile in map.tiles.iter() {
-        match tile {
-            TileType::Floor => {
-                ctx.set(
-                    x,
-                    y,
-                    RGB::from_f32(0.5, 0.5, 0.5),
-                    RGB::from_f32(0.0, 0.0, 0.0),
-                    to_cp437('.'),
-                );
-            }
-            TileType::Wall => {
-                ctx.set(
-                    x,
-                    y,
-                    RGB::from_f32(0.0, 1.0, 0.0),
-                    RGB::from_f32(0.0, 0.0, 0.0),
-                    to_cp437('#'),
-                );
-            }
-        }
+        for tile in map.tiles.iter() {
+            let point = Point::new(x, y);
 
-        x += 1;
-        if x > MAP_WIDTH - 1 {
-            x = 0;
-            y += 1;
+            if viewshed.visible_tiles.contains(&point) {
+                match tile {
+                    TileType::Floor => {
+                        ctx.set(
+                            x,
+                            y,
+                            RGB::from_f32(0.5, 0.5, 0.5),
+                            RGB::from_f32(0.0, 0.0, 0.0),
+                            to_cp437('.'),
+                        );
+                    }
+                    TileType::Wall => {
+                        ctx.set(
+                            x,
+                            y,
+                            RGB::from_f32(0.0, 1.0, 0.0),
+                            RGB::from_f32(0.0, 0.0, 0.0),
+                            to_cp437('#'),
+                        );
+                    }
+                }
+            }
+
+            x += 1;
+            if x > MAP_WIDTH - 1 {
+                x = 0;
+                y += 1;
+            }
         }
     }
 }

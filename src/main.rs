@@ -9,6 +9,8 @@ mod player;
 pub use player::*;
 pub mod rect;
 use rect::Rect;
+mod visibility_system;
+use visibility_system::VisibilitySystem;
 
 pub struct State {
     ecs: World,
@@ -16,6 +18,8 @@ pub struct State {
 
 impl State {
     fn run_systems(&mut self) {
+        let mut vis = VisibilitySystem {};
+        vis.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -47,6 +51,7 @@ fn main() -> BError {
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
+    gs.ecs.register::<Viewshed>();
 
     let map = Map::new();
     let (player_x, player_y) = map.rooms[0].center();
@@ -64,6 +69,10 @@ fn main() -> BError {
             bg: RGB::named(BLACK),
         })
         .with(Player {})
+        .with(Viewshed {
+            visible_tiles: Vec::new(),
+            range: 8,
+        })
         .build();
 
     main_loop(context, gs)

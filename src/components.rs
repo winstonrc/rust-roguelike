@@ -1,5 +1,8 @@
-use bracket_lib::terminal::{FontCharType, RGB};
+use bracket_lib::terminal::{FontCharType, Point, RGB};
 use specs::{prelude::*, Component};
+
+#[derive(Component, Debug)]
+pub struct Player {}
 
 #[derive(Component)]
 pub struct Position {
@@ -14,5 +17,8 @@ pub struct Renderable {
     pub bg: RGB,
 }
 
-#[derive(Component, Debug)]
-pub struct Player {}
+#[derive(Component)]
+pub struct Viewshed {
+    pub visible_tiles: Vec<Point>,
+    pub range: i32,
+}

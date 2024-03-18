@@ -4,9 +4,7 @@ use bracket_lib::terminal::{to_cp437, BTerm, Point, RGB};
 use specs::prelude::*;
 use std::cmp::{max, min};
 
-use crate::Player;
-
-use super::{Rect, Viewshed};
+use super::Rect;
 
 pub const MAP_WIDTH: i32 = 80;
 pub const MAP_HEIGHT: i32 = 50;
@@ -127,45 +125,39 @@ impl BaseMap for Map {
 }
 
 pub fn draw_map(ecs: &World, ctx: &mut BTerm) {
-    let mut viewsheds = ecs.write_storage::<Viewshed>();
-    let mut players = ecs.write_storage::<Player>();
     let map = ecs.fetch::<Map>();
 
-    for (_player, viewshed) in (&mut players, &mut viewsheds).join() {
-        let mut x = 0;
-        let mut y = 0;
+    let mut x = 0;
+    let mut y = 0;
 
-        for tile in map.tiles.iter() {
-            let point = Point::new(x, y);
-
-            if viewshed.visible_tiles.contains(&point) {
-                match tile {
-                    TileType::Floor => {
-                        ctx.set(
-                            x,
-                            y,
-                            RGB::from_f32(0.5, 0.5, 0.5),
-                            RGB::from_f32(0.0, 0.0, 0.0),
-                            to_cp437('.'),
-                        );
-                    }
-                    TileType::Wall => {
-                        ctx.set(
-                            x,
-                            y,
-                            RGB::from_f32(0.0, 1.0, 0.0),
-                            RGB::from_f32(0.0, 0.0, 0.0),
-                            to_cp437('#'),
-                        );
-                    }
+    for (idx, tile) in map.tiles.iter().enumerate() {
+        if map.revealed_tiles[idx] {
+            match tile {
+                TileType::Floor => {
+                    ctx.set(
+                        x,
+                        y,
+                        RGB::from_f32(0.5, 0.5, 0.5),
+                        RGB::from_f32(0.0, 0.0, 0.0),
+                        to_cp437('.'),
+                    );
+                }
+                TileType::Wall => {
+                    ctx.set(
+                        x,
+                        y,
+                        RGB::from_f32(0.0, 1.0, 0.0),
+                        RGB::from_f32(0.0, 0.0, 0.0),
+                        to_cp437('#'),
+                    );
                 }
             }
+        }
 
-            x += 1;
-            if x > MAP_WIDTH - 1 {
-                x = 0;
-                y += 1;
-            }
+        x += 1;
+        if x > MAP_WIDTH - 1 {
+            x = 0;
+            y += 1;
         }
     }
 }

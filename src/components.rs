@@ -2,6 +2,9 @@ use bracket_lib::terminal::{FontCharType, Point, RGB};
 use specs::{prelude::*, Component};
 
 #[derive(Component, Debug)]
+pub struct Monster {}
+
+#[derive(Component, Debug)]
 pub struct Player {}
 
 #[derive(Component)]

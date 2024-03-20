@@ -5,6 +5,8 @@ mod components;
 pub use components::*;
 mod map;
 pub use map::*;
+mod monster_ai_system;
+pub use monster_ai_system::*;
 mod player;
 pub use player::*;
 pub mod rect;
@@ -12,14 +14,25 @@ use rect::Rect;
 mod visibility_system;
 use visibility_system::VisibilitySystem;
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum RunState {
+    Running,
+    Paused,
+}
+
 pub struct State {
-    ecs: World,
+    pub ecs: World,
+    pub run_state: RunState,
 }
 
 impl State {
     fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
+
+        let mut mob = MonsterAI {};
+        mob.run_now(&self.ecs);
+
         self.ecs.maintain();
     }
 }
@@ -28,16 +41,24 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         ctx.cls();
 
-        player_input(self, ctx);
-        self.run_systems();
+        if self.run_state == RunState::Running {
+            self.run_systems();
+            self.run_state = RunState::Paused;
+        } else {
+            self.run_state = player_input(self, ctx);
+        }
 
         draw_map(&self.ecs, ctx);
 
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
+        let map = self.ecs.fetch::<Map>();
 
         for (pos, render) in (&positions, &renderables).join() {
-            ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+            let idx = map.xy_idx(pos.x, pos.y);
+            if map.visible_tiles[idx] {
+                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+            }
         }
     }
 }
@@ -47,18 +68,24 @@ fn main() -> BError {
         .with_title("Roguelike")
         .build()?;
 
-    let mut gs = State { ecs: World::new() };
+    let mut gs = State {
+        ecs: World::new(),
+        run_state: RunState::Running,
+    };
+
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
+    gs.ecs.register::<Monster>();
 
     let map = Map::new();
     let (player_x, player_y) = map.rooms[0].center();
-    gs.ecs.insert(map);
 
+    // Player
     gs.ecs
         .create_entity()
+        .with(Player {})
         .with(Position {
             x: player_x,
             y: player_y,
@@ -68,7 +95,6 @@ fn main() -> BError {
             fg: RGB::named(YELLOW),
             bg: RGB::named(BLACK),
         })
-        .with(Player {})
         .with(Viewshed {
             visible_tiles: Vec::new(),
             range: 8,
@@ -76,5 +102,35 @@ fn main() -> BError {
         })
         .build();
 
+    // Monsters
+    let mut rng = RandomNumberGenerator::new();
+    for room in map.rooms.iter().skip(1) {
+        let (x, y) = room.center();
+
+        let glyph: FontCharType;
+        let roll = rng.roll_dice(1, 2);
+        match roll {
+            1 => glyph = to_cp437('g'),
+            _ => glyph = to_cp437('o'),
+        }
+
+        gs.ecs
+            .create_entity()
+            .with(Monster {})
+            .with(Position { x, y })
+            .with(Renderable {
+                glyph,
+                fg: RGB::named(RED),
+                bg: RGB::named(BLACK),
+            })
+            .with(Viewshed {
+                visible_tiles: Vec::new(),
+                range: 8,
+                dirty: true,
+            })
+            .build();
+    }
+
+    gs.ecs.insert(map);
     main_loop(context, gs)
 }

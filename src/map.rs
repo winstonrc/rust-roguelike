@@ -1,6 +1,7 @@
+use bracket_lib::algorithm_traits::SmallVec;
 use bracket_lib::pathfinding::{Algorithm2D, BaseMap};
 use bracket_lib::random::RandomNumberGenerator;
-use bracket_lib::terminal::{to_cp437, BTerm, Point, RGB};
+use bracket_lib::terminal::{to_cp437, BTerm, DistanceAlg, Point, RGB};
 use specs::prelude::*;
 use std::cmp::{max, min};
 
@@ -24,6 +25,7 @@ pub struct Map {
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
+    pub blocked: Vec<bool>,
 }
 
 impl Map {
@@ -35,6 +37,7 @@ impl Map {
             height: MAP_HEIGHT,
             revealed_tiles: vec![false; MAP_AREA as usize],
             visible_tiles: vec![false; MAP_AREA as usize],
+            blocked: vec![false; MAP_AREA as usize],
         };
 
         const MAX_ROOMS: i32 = 30;
@@ -84,6 +87,12 @@ impl Map {
         (y as usize * self.width as usize) + x as usize
     }
 
+    pub fn populate_blocked(&mut self) {
+        for (i, tile) in self.tiles.iter_mut().enumerate() {
+            self.blocked[i] = *tile == TileType::Wall;
+        }
+    }
+
     fn apply_room_to_map(&mut self, room: &Rect) {
         for y in room.y1 + 1..=room.y2 {
             for x in room.x1 + 1..=room.x2 {
@@ -110,6 +119,15 @@ impl Map {
             }
         }
     }
+
+    fn is_exit_valid(&self, x: i32, y: i32) -> bool {
+        if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
+            return false;
+        }
+
+        let idx = self.xy_idx(x, y);
+        !self.blocked[idx]
+    }
 }
 
 impl Algorithm2D for Map {
@@ -121,6 +139,40 @@ impl Algorithm2D for Map {
 impl BaseMap for Map {
     fn is_opaque(&self, idx: usize) -> bool {
         self.tiles[idx] == TileType::Wall
+    }
+
+    fn get_pathing_distance(&self, idx1: usize, idx2: usize) -> f32 {
+        let width = self.width as usize;
+        let p1 = Point::new(idx1 % width, idx1 / width);
+        let p2 = Point::new(idx2 % width, idx2 / width);
+
+        DistanceAlg::Pythagoras.distance2d(p1, p2)
+    }
+
+    fn get_available_exits(&self, idx: usize) -> SmallVec<[(usize, f32); 10]> {
+        let mut exits = SmallVec::new();
+        let x = idx as i32 % self.width;
+        let y = idx as i32 / self.height;
+        let width = self.width as usize;
+
+        // Cardinal directions
+        if self.is_exit_valid(x - 1, y) {
+            exits.push((idx - 1, 1.0))
+        };
+
+        if self.is_exit_valid(x + 1, y) {
+            exits.push((idx + 1, 1.0))
+        };
+
+        if self.is_exit_valid(x, y - 1) {
+            exits.push((idx - width, 1.0))
+        };
+
+        if self.is_exit_valid(x, y + 1) {
+            exits.push((idx + width, 1.0))
+        };
+
+        exits
     }
 }
 

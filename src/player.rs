@@ -2,7 +2,7 @@ use bracket_lib::prelude::*;
 use specs::prelude::*;
 use std::cmp::{max, min};
 
-use super::{Map, Player, Position, RunState, State, TileType, Viewshed};
+use super::{Map, Player, Position, RunState, State, Viewshed};
 use crate::map::{MAP_HEIGHT, MAP_WIDTH};
 
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
@@ -14,7 +14,7 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 
     for (_player, pos, viewshed) in (&mut players, &mut positions, &mut viewsheds).join() {
         let destination_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
-        if map.tiles[destination_idx] != TileType::Wall {
+        if !map.blocked[destination_idx] {
             pos.x = min(MAP_WIDTH - 1, max(0, pos.x + delta_x));
             ppos.x = pos.x;
             pos.y = min(MAP_HEIGHT - 1, max(0, pos.y + delta_y));

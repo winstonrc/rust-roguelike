@@ -5,6 +5,8 @@ mod components;
 pub use components::*;
 mod map;
 pub use map::*;
+mod map_indexing_system;
+pub use map_indexing_system::*;
 mod monster_ai_system;
 pub use monster_ai_system::*;
 mod player;
@@ -32,6 +34,9 @@ impl State {
 
         let mut mob = MonsterAI {};
         mob.run_now(&self.ecs);
+
+        let mut map_index = MapIndexingSystem {};
+        map_index.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -79,6 +84,7 @@ fn main() -> BError {
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
     gs.ecs.register::<Name>();
+    gs.ecs.register::<BlocksTile>();
 
     let map = Map::new();
     let (player_x, player_y) = map.rooms[0].center();
@@ -143,6 +149,7 @@ fn main() -> BError {
             .with(Name {
                 name: format!("{} #{}", &name, i),
             })
+            .with(BlocksTile {})
             .build();
     }
 

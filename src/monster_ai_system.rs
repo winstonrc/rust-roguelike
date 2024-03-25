@@ -1,23 +1,26 @@
-use bracket_lib::pathfinding::{field_of_view, Point};
+use bracket_lib::geometry::Point;
 use bracket_lib::terminal::console;
 use specs::prelude::*;
 
-use super::{Map, Monster, Position, Viewshed};
+use super::{Monster, Name, Viewshed};
 
 pub struct MonsterAI {}
 
 impl<'a> System<'a> for MonsterAI {
     type SystemData = (
+        ReadExpect<'a, Point>,
         ReadStorage<'a, Viewshed>,
-        ReadStorage<'a, Position>,
         ReadStorage<'a, Monster>,
+        ReadStorage<'a, Name>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (viewshed, pos, monster) = data;
+        let (player_pos, viewshed, monster, name) = data;
 
-        for (viewshed, pos, _monster) in (&viewshed, &pos, &monster).join() {
-            console::log("Monster considers their own existence.");
+        for (viewshed, _monster, name) in (&viewshed, &monster, &name).join() {
+            if viewshed.visible_tiles.contains(&*player_pos) {
+                console::log(format!("{} shouts insults.", name.name));
+            }
         }
     }
 }
